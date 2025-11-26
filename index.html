@@ -226,6 +226,8 @@
       position: absolute;
       inset: 0;
       background: rgba(12,16,20,0.92);
+      z-index: 1000;
+      pointer-events: auto;
       display: none;
       flex-direction: column;
       align-items: center;
@@ -234,6 +236,12 @@
       padding: 20px;
       gap: 12px;
     }
+    /* Intro / Help overlay styling (reuses .overlay) */
+    .intro .title { font-size: 20px; margin-bottom: 6px; }
+    .help-content { max-width: 360px; text-align: left; color: #d7e1e8; }
+    .help-list { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-top: 8px; }
+    .help-item { display:flex; gap:8px; align-items:center; }
+    .help-item .tile { position: static; width: 36px; height: 36px; inset: auto; transform: none; }
     .overlay.show { display: flex; }
     .overlay h2 { margin: 0; }
     .overlay .msg { color: #9aa4b3; font-size: 13px; line-height: 1.7; }
@@ -247,6 +255,43 @@
       <h1>証拠保管パズル</h1>
       <div class="subtitle">KAGAWA DISTRICT PUBLIC PROSECUTORS OFFICE</div>
     </header>
+    <!-- Intro modal: shown before the game starts -->
+    <div class="overlay show" id="intro">
+      <h2 class="title">証拠保管パズル</h2>
+      <div class="msg">証拠を整理して保管棚に安全に格納しよう。ブロックを揃えて箱詰めしてください。</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="btn-start">ゲームを始める</button>
+        <button id="btn-help">解説</button>
+      </div>
+    </div>
+    <!-- Help modal: hidden until requested -->
+    <div class="overlay" id="help">
+      <h2>遊び方・解説</h2>
+      <div class="help-content">
+        <div>■ ブロック一覧</div>
+        <div class="help-list">
+          <div class="help-item"><div class="tile usb"></div><div>USB</div></div>
+          <div class="help-item"><div class="tile mail"></div><div>MAIL</div></div>
+          <div class="help-item"><div class="tile phone"></div><div>PHONE</div></div>
+          <div class="help-item"><div class="tile wallet"></div><div>WALLET</div></div>
+          <div class="help-item"><div class="tile case"></div><div>CASE</div></div>
+          <div class="help-item"><div class="tile special"></div><div>SPECIAL（特殊証拠品）</div></div>
+        </div>
+        <hr style="opacity:0.08; margin:8px 0;" />
+        <div>■ ルール</div>
+        <div style="margin-top:6px;">・同じ種類を横または縦に3つ（1x3 / 3x1）揃えると整理（消去）され、保管棚に箱詰めされます。<br>
+        ・2x2 の正方形に揃えても整理されます。消した形に応じて保管棚で同じ形で表示されます。</div>
+        <div style="margin-top:8px;"><strong>特殊証拠品の取り扱い：</strong><br>
+        特殊証拠品（赤）は重要なので周囲に十分な空きが必要です。同じ特殊証拠品が隣接している場合は、そのグループ全体の周囲（有効隣接セル）がすべて埋まってしまうとゲームオーバーになります。つまり、特殊が囲まれないように注意して整理してください。</div>
+        <hr style="opacity:0.08; margin:8px 0;" />
+        <div>■ 操作</div>
+        <div style="margin-top:6px;">・左右キー: 移動 / ↑: ハードドロップ / ↓: ソフトドロップ<br>・画面のボタンでも操作できます。音は「音を有効にする」でONにしてください。</div>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button id="help-close">閉じる</button>
+        <button id="help-start">このまま始める</button>
+      </div>
+    </div>
     <div class="hud">
       <div>
         <div class="label">SCORE</div>
@@ -731,6 +776,32 @@
         if (btn) btn.style.display = 'none';
         statusEl.textContent = '音声: 有効';
       });
+      // Intro / Help ボタンのハンドラ
+      const introEl = document.getElementById('intro');
+      const helpEl = document.getElementById('help');
+      const btnStart = document.getElementById('btn-start');
+      const btnHelp = document.getElementById('btn-help');
+      const helpClose = document.getElementById('help-close');
+      const helpStart = document.getElementById('help-start');
+      if (btnStart) btnStart.addEventListener('click', () => {
+        console.log('Start button clicked');
+        if (introEl) introEl.classList.remove('show');
+        resetGame();
+      });
+      if (btnHelp) btnHelp.addEventListener('click', () => {
+        console.log('Help button clicked');
+        if (helpEl) helpEl.classList.add('show');
+      });
+      if (helpClose) helpClose.addEventListener('click', () => {
+        console.log('Help close clicked');
+        if (helpEl) helpEl.classList.remove('show');
+      });
+      if (helpStart) helpStart.addEventListener('click', () => {
+        console.log('Help start clicked');
+        if (helpEl) helpEl.classList.remove('show');
+        if (introEl) introEl.classList.remove('show');
+        resetGame();
+      });
     }
 
     function resetGame() {
@@ -755,15 +826,14 @@
     }
 
     function setup() {
+      // 初期表示の準備のみ。ゲーム開始は「ゲームを始める」ボタンで行う。
       initGrid();
       bindControls();
       renderNext();
-      spawn();
-      render();
       renderStorage();
       updateLayout();
       window.addEventListener('resize', updateLayout);
-      startTimers();
+      // intro overlay は HTML 側で初期表示（class="show"）にしている
     }
 
     // レイアウト調整：利用可能幅に応じてセルサイズを動的に決定
